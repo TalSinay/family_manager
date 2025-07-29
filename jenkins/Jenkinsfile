@@ -1,0 +1,42 @@
+pipeline {
+    agent any
+    environment {
+        IMAGE_NAME = 'tesla7300/family_manager'
+        SSH_USER = 'taldevops'
+        SSH_HOST = '20.86.132.101'
+    }
+
+    stages {
+        stage('Clone') {
+            steps {
+                git 'https://github.com/TalSinay/family_manager.git'
+            }
+        }
+
+        stage('Build Docker') {
+            steps {
+                sh 'docker build -t $IMAGE_NAME .'
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh 'echo $PASS | docker login -u $USER --password-stdin'
+                    sh 'docker push $IMAGE_NAME'
+                }
+            }
+        }
+
+        stage('Deploy to Azure VM') {
+            steps {
+                sshagent(credentials: ['azure-ssh']) {
+                    sh './scripts/deploy.sh'
+            }
+        }
+    }
+}
+}
+
+
+
